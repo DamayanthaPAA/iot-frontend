@@ -31,7 +31,9 @@
     </footer>
 
     <script>
-        const ws = new WebSocket('ws://localhost:3000');
+        // WebSocket URL
+        const socketUrl = 'wss://iot-backend-vo9l.onrender.com'; // Using secure WebSocket protocol
+        const ws = new WebSocket(socketUrl);
         const parkingSlots = {};
         let availableCount = 0;
         let occupiedCount = 0;
