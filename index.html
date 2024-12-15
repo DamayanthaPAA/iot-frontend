@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Spot Monitor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Parking Spot Monitoring System - Parking B</h1>
+
+    <!-- Summary Section -->
+    <div id="summary" class="summary">
+        <div class="summary-item available-summary">
+            <p>Available Slots</p>
+            <p id="available-count">0</p>
+        </div>
+        <div class="summary-item occupied-summary">
+            <p>Occupied Slots</p>
+            <p id="occupied-count">0</p>
+        </div>
+    </div>
+
+    <!-- Parking Slots Section -->
+    <div id="parking-slots" class="parking-slots">
+        <!-- Dynamic parking slots will be added here -->
+    </div>
+
+    <footer>
+        &copy; 2024 Smart Parking System
+    </footer>
+
+    <script>
+        const ws = new WebSocket('ws://localhost:3000');
+        const parkingSlots = {};
+        let availableCount = 0;
+        let occupiedCount = 0;
+
+        // Function to update summary
+        function updateSummary() {
+            document.getElementById('available-count').textContent = availableCount;
+            document.getElementById('occupied-count').textContent = occupiedCount;
+        }
+
+        ws.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            const mac = data.mac;
+            const distance = data.distance;
+
+            // Check if the parking slot for this MAC exists, otherwise create it
+            if (!parkingSlots[mac]) {
+                const slotDiv = document.createElement('div');
+                slotDiv.id = mac;
+                slotDiv.className = 'status loading';
+                slotDiv.innerHTML = `
+                    <p><strong>MAC:</strong> ${mac}</p>
+                    <p><strong>Status:</strong> <span class="slot-status">Loading...</span></p>
+                `;
+                document.getElementById('parking-slots').appendChild(slotDiv);
+                parkingSlots[mac] = { element: slotDiv, status: null };
+            }
+
+            // Update the slot status and count
+            const slotData = parkingSlots[mac];
+            const statusElement = slotData.element.querySelector('.slot-status');
+            const previousStatus = slotData.status;
+
+            if (distance > 10) {
+                slotData.element.className = 'status available';
+                statusElement.textContent = 'Available';
+
+                // Update counts only if the status has changed
+                if (previousStatus !== 'available') {
+                    if (previousStatus === 'occupied') occupiedCount--;
+                    availableCount++;
+                    slotData.status = 'available';
+                }
+            } else if (distance >= 0) {
+                slotData.element.className = 'status occupied';
+                statusElement.textContent = 'Occupied';
+
+                // Update counts only if the status has changed
+                if (previousStatus !== 'occupied') {
+                    if (previousStatus === 'available') availableCount--;
+                    occupiedCount++;
+                    slotData.status = 'occupied';
+                }
+            } else {
+                slotData.element.className = 'status loading';
+                statusElement.textContent = 'Error';
+            }
+
+            // Update summary
+            updateSummary();
+        };
+
+        ws.onerror = function (error) {
+            console.error('WebSocket error:', error);
+        };
+    </script>
+</body>
+</html>

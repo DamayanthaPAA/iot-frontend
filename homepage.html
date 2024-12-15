@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Spot Monitor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Parking Spot Monitoring System</h1>
+    <div id="parking-slots" class="parking-slots">
+        <!-- Dynamic parking slots will be added here -->
+    </div>
+
+    <footer>
+        &copy; 2024 Smart Parking System
+    </footer>
+
+    <script>
+        const socketUrl = 'wss://iot-backend-vo9l.onrender.com'; // Using secure WebSocket protocol
+        const ws = new WebSocket(socketUrl); //('ws://localhost:3000');
+        const parkingSlots = {};
+
+        ws.onmessage = function (event) {
+            const data = JSON.parse(event.data);
+            const mac = data.mac;
+            const distance = data.distance;
+
+            // Check if the parking slot for this MAC exists, otherwise create it
+            if (!parkingSlots[mac]) {
+                const slotDiv = document.createElement('div');
+                slotDiv.id = mac;
+                slotDiv.className = 'status loading';
+                slotDiv.innerHTML = `
+                    <p><strong>MAC:</strong> ${mac}</p>
+                    <p><strong>Status:</strong> <span class="slot-status">Loading...</span></p>
+                `;
+                document.getElementById('parking-slots').appendChild(slotDiv);
+                parkingSlots[mac] = slotDiv;
+            }
+
+            // Update the status based on distance
+            const slotDiv = parkingSlots[mac];
+            const statusElement = slotDiv.querySelector('.slot-status');
+
+            if (distance > 10) {
+                slotDiv.className = 'status available';
+                statusElement.textContent = 'Available';
+            } else if (distance >= 0) {
+                slotDiv.className = 'status occupied';
+                statusElement.textContent = 'Occupied';
+            } else {
+                slotDiv.className = 'status loading';
+                statusElement.textContent = 'Error';
+            }
+        };
+
+        ws.onerror = function (error) {
+            console.error('WebSocket error:', error);
+        };
+    </script>
+</body>
+</html>

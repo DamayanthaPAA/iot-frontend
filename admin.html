@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Parking Spot Monitor</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>Parking Spot Monitoring System</h1>
+
+    <div id="summary">
+        <div class="summary-item">
+            <span>Available Slots:</span> <span id="available-count">0</span>
+        </div>
+        <div class="summary-item">
+            <span>Occupied Slots:</span> <span id="occupied-count">0</span>
+        </div>
+    </div>
+
+    <div id="parking-slots"></div>
+
+    <script>
+        // WebSocket URL
+        const socketUrl = 'wss://iot-backend-vo9l.onrender.com'; // Using secure WebSocket protocol
+        const ws = new WebSocket(socketUrl);
+
+        const parkingSlots = {}; // To store parking slot statuses
+        const parkingContainer = document.getElementById('parking-slots');
+        const availableCount = document.getElementById('available-count');
+        const occupiedCount = document.getElementById('occupied-count');
+
+        // Function to render parking slots dynamically
+        function updateUI() {
+            parkingContainer.innerHTML = ''; // Clear previous UI
+
+            let available = 0;
+            let occupied = 0;
+
+            for (const [mac, status] of Object.entries(parkingSlots)) {
+                const slotDiv = document.createElement('div');
+                slotDiv.className = `status ${status ? 'occupied' : 'available'}`;
+                slotDiv.innerText = `Slot ${mac} - ${status ? 'Occupied' : 'Available'}`;
+                parkingContainer.appendChild(slotDiv);
+
+                if (status) {
+                    occupied++;
+                } else {
+                    available++;
+                }
+            }
+
+            // Update counts
+            availableCount.innerText = available;
+            occupiedCount.innerText = occupied;
+        }
+
+        // WebSocket event listeners
+        ws.onopen = () => {
+            console.log('WebSocket connection established.');
+        };
+
+        ws.onmessage = (event) => {
+            const data = JSON.parse(event.data);
+
+            // Assuming data has the format:
+            // {"mac":"E4:6D:78:1B:5A:E0", "distance":191.50, "unit":"cm"}
+            const mac = data.mac;
+            const distance = data.distance;
+
+            // Update slot status: occupied if distance <= 10
+            parkingSlots[mac] = distance <= 10;
+
+            // Update the UI
+            updateUI();
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket connection closed.');
+        };
+    </script>
+</body>
+</html>
